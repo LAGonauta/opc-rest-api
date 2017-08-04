@@ -27,10 +27,12 @@ class ApiFunctions():
 		self.config.readfp(file_handle)
 
 		self.opc_classname = self.config.get('opc', 'classname')
+		self.opc_gateway = self.config.get('opc', 'gateway')
 		self.opc_servers = self.config.get('opc', 'servers')
 		self.opc_host = self.config.get('opc', 'host')
 
-		self.logger.info('Opc Class: ' + self.opc_classname) 
+		self.logger.info('Opc Class: ' + self.opc_classname)
+		self.logger.info('Opc Gateway: ' + self.opc_gateway)
 		self.logger.info('Opc Servers: ' + self.opc_servers) 
 		self.logger.info('Opc Host: ' + self.opc_host)
 
@@ -38,9 +40,9 @@ class ApiFunctions():
 		self.preferences = {}
 		self.preferences['show_root'] = mTools.str_to_bool(self.config.get('preferences', 'show_root'))
 
-		self.opc = OpenOPC.client()
+		self.opc = OpenOPC.open_client(self.opc_gateway)
 		result = self.opc.connect(self.opc_servers, self.opc_host)
-		#result = False
+		result = True
 		if result:
 			self.logger.info('... Successfully connected to OPC server')
 			return True

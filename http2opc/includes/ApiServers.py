@@ -34,16 +34,15 @@ class RestApiServer(Thread):
             httpd.serve_forever()
 
 
-
-
 class RestRequestHandler (BaseHTTPRequestHandler) :
 
     def do_GET(self) :
 
         params = []
+        method = None
 
         #logger.info('Hit with: ' + self.path )
-        qstring = self.path[1:].split('&')
+        qstring = self.path[2:].split('&')
         for s in qstring:
 
             if '=' in s:
@@ -52,7 +51,7 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                 if k == 'method':
                     method = v
                 else:
-                    params = v
+                    params.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
             else:
                 method = False
                 params = False
@@ -69,30 +68,26 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
         if method:
 
             if params:
-                d_params = urllib.unquote(params).decode('utf8').replace('+', ' ')
-
-            if method.lower() == 'list':
-                json.dump( funcs.list(d_params), self.wfile )
-            elif method.lower() == 'listrecursive':
-                json.dump( funcs.listRecursive(d_params), self.wfile ) 
-            elif method.lower() == 'listtree':
-                json.dump( funcs.listTree(d_params), self.wfile )
-            elif method.lower() == 'listonedeep':
-                json.dump( funcs.listOneDeep(d_params), self.wfile )
-            elif method.lower() == 'read':
-                json.dump( funcs.read(d_params), self.wfile ) 
-            elif method.lower() == 'properties':
-                json.dump( funcs.properties(d_params, False), self.wfile )
-            elif method.lower() == 'jsonproperties':
-                json.dump( funcs.properties(d_params, True), self.wfile )
-            elif method.lower() == 'search':
-                json.dump( funcs.search(d_params), self.wfile )
-            elif method.lower() == 'testing':
-                json.dump( funcs.testing(d_params), self.wfile )
-            elif method.lower() == 'testcall':
-                json.dump( funcs.test_call(), self.wfile )
-
-
+                if method.lower() == 'list':
+                    json.dump( funcs.list(params), self.wfile )
+                elif method.lower() == 'listrecursive':
+                    json.dump( funcs.listRecursive(params), self.wfile ) 
+                elif method.lower() == 'listtree':
+                    json.dump( funcs.listTree(params), self.wfile )
+                elif method.lower() == 'listonedeep':
+                    json.dump( funcs.listOneDeep(params), self.wfile )
+                elif method.lower() == 'read':
+                    json.dump( funcs.read(params), self.wfile ) 
+                elif method.lower() == 'properties':
+                    json.dump( funcs.properties(params, False), self.wfile )
+                elif method.lower() == 'jsonproperties':
+                    json.dump( funcs.properties(params, True), self.wfile )
+                elif method.lower() == 'search':
+                    json.dump( funcs.search(params), self.wfile )
+                elif method.lower() == 'testing':
+                    json.dump( funcs.testing(params), self.wfile )
+                elif method.lower() == 'testcall':
+                    json.dump( funcs.test_call(), self.wfile )
 
 
     def log_message(self, format, *args):

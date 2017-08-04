@@ -1,3 +1,15 @@
+# HOW TO USE
+
+
+```python
+import json, requests
+payload = {"method": "read", "params": ["TAG1", "TAG2"]}
+response = requests.get("http://IP:PORT/", payload, timeout=1)
+```
+
+
+-----------
+
 # OPC Rest Api
 Python Rest API using OpenOPC to provide direct API access for any OS platform. This proxy has to be installed on a Windows box with Python and OpenOPC installed to provide a API Gateway to other platforms.
 
