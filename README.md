@@ -5,6 +5,12 @@
 import json, requests
 payload = {"method": "read", "params": ["TAG1", "TAG2"]}
 response = requests.get("http://IP:PORT/", payload, timeout=1)
+
+values = json.loads(response.content)
+
+# print TAG1 and TAG2
+print(values(0)(1))
+print(values(1)(1))
 ```
 
 

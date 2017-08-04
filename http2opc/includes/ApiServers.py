@@ -39,6 +39,7 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
     def do_GET(self) :
 
         params = []
+        values = []
         method = None
 
         #logger.info('Hit with: ' + self.path )
@@ -50,12 +51,16 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                 k,v = s.split('=')
                 if k == 'method':
                     method = v
+                elif k == 'values'
+                    values.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
                 else:
                     params.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
             else:
                 method = False
                 params = False
 
+        # (TODO) The status code should be decided after writing or reading
+        # Codes that may be interesting to use: 400, 418, 500
         #send response code:
         self.send_response(200)
         #send headers:
@@ -71,13 +76,25 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                 if method.lower() == 'list':
                     json.dump( funcs.list(params), self.wfile )
                 elif method.lower() == 'listrecursive':
-                    json.dump( funcs.listRecursive(params), self.wfile ) 
+                    json.dump( funcs.listRecursive(params), self.wfile )
                 elif method.lower() == 'listtree':
                     json.dump( funcs.listTree(params), self.wfile )
                 elif method.lower() == 'listonedeep':
                     json.dump( funcs.listOneDeep(params), self.wfile )
                 elif method.lower() == 'read':
-                    json.dump( funcs.read(params), self.wfile ) 
+                    json.dump( funcs.read(params), self.wfile )
+                elif method.lower() == 'write':
+                    try:
+                        tuples_list = []
+                        index = 0
+                        for tag in params:
+                            tuples_list.append((tag, values[index]))
+                            index += 1
+
+                        json.dump( funcs.write(tuples_list), self.wfile)
+                        except:
+                            print('The number of tags and values do not match.')
+
                 elif method.lower() == 'properties':
                     json.dump( funcs.properties(params, False), self.wfile )
                 elif method.lower() == 'jsonproperties':

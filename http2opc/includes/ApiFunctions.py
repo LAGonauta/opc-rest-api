@@ -174,6 +174,13 @@ class ApiFunctions():
 
 		return lst
 
+    ## -- Mimics OpenOPC's write function.  Writes a list of (tag, value) pair(s), returns a list of booleans or a single boolean.
+    def write(self, params):
+
+        boollst = self.opc.write(params)
+
+        return boollst
+
 	## -- Mimics the OpenOPC's properties function. Parsing in a leaf name or multiple leaves will return the result that you would expect when calling it via OpenOPC
 	def properties(self, params, json=False):
 
