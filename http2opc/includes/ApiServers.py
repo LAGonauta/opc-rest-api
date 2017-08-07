@@ -139,11 +139,10 @@ class RestRequestHandler (BaseHTTPRequestHandler):
                             index += 1
 
                         json.dump( funcs.write(tuples_list), self.wfile)
-                    except BaseException as e:
-                        if e == ValueError:
-                            print('Value not a number.')
-                        else:
-                            print('There are more tags than values.')
+                    except IndexError:
+                        print('There are more tags than values.')
+                    except ValueError:
+                        print('Value not a number.')
 
     def log_message(self, format, *args):
         logger.info('Incoming: ' + self.client_address[0] )
