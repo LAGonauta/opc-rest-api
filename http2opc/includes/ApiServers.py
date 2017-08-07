@@ -34,10 +34,9 @@ class RestApiServer(Thread):
             httpd.serve_forever()
 
 
-class RestRequestHandler (BaseHTTPRequestHandler) :
+class RestRequestHandler (BaseHTTPRequestHandler):
 
-    def do_GET(self) :
-
+    def do_GET(self):
         params = []
         values = []
         method = None
@@ -51,7 +50,7 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                 k,v = s.split('=')
                 if k == 'method':
                     method = v
-                elif k == 'values'
+                elif k == 'values':
                     values.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
                 else:
                     params.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
@@ -83,18 +82,6 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                     json.dump( funcs.listOneDeep(params), self.wfile )
                 elif method.lower() == 'read':
                     json.dump( funcs.read(params), self.wfile )
-                elif method.lower() == 'write':
-                    try:
-                        tuples_list = []
-                        index = 0
-                        for tag in params:
-                            tuples_list.append((tag, values[index]))
-                            index += 1
-
-                        json.dump( funcs.write(tuples_list), self.wfile)
-                        except:
-                            print('The number of tags and values do not match.')
-
                 elif method.lower() == 'properties':
                     json.dump( funcs.properties(params, False), self.wfile )
                 elif method.lower() == 'jsonproperties':
@@ -106,6 +93,57 @@ class RestRequestHandler (BaseHTTPRequestHandler) :
                 elif method.lower() == 'testcall':
                     json.dump( funcs.test_call(), self.wfile )
 
+    def do_PUT(self):
+        params = []
+        values = []
+        method = None
+
+        content = self.rfile.read(int(self.headers['Content-Length']))
+        #logger.info('Hit with: ' + content )
+        qstring = content.split('&')
+        for s in qstring:
+
+            if '=' in s:
+
+                k,v = s.split('=')
+                if k == 'method':
+                    method = v
+                elif k == 'values':
+                    values.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
+                else:
+                    params.append(urllib.unquote(v).decode('utf8').replace('+', ' '))
+            else:
+                method = False
+                params = False
+
+        # (TODO) The status code should be decided after writing or reading
+        # Codes that may be interesting to use: 400, 418, 500
+        #send response code:
+        self.send_response(200)
+        #send headers:
+        #self.send_header("Content-type:", "text/html")
+        self.send_header("Content-type:", "application/json")
+        # send a blank line to end headers:
+        self.wfile.write("\n")
+
+        ## -- Extract function parameters.
+        if method:
+
+            if params:
+                if method.lower() == 'write':
+                    try:
+                        tuples_list = []
+                        index = 0
+                        for tag in params:
+                            tuples_list.append((tag, float(values[index])))
+                            index += 1
+
+                        json.dump( funcs.write(tuples_list), self.wfile)
+                    except BaseException as e:
+                        if e == ValueError:
+                            print('Value not a number.')
+                        else:
+                            print('There are more tags than values.')
 
     def log_message(self, format, *args):
         logger.info('Incoming: ' + self.client_address[0] )
