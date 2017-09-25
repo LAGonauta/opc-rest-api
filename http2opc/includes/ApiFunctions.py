@@ -13,231 +13,227 @@ import json
 import ConfigParser
 import mTools
 
+
 class ApiFunctions():
-	def __init__(self, logger):
+    def __init__(self, logger):
 
-		self.logger = logger
+        self.logger = logger
 
+    def init(self):
 
-	def init(self):
+        config_filename = 'main.conf'
+        self.config = ConfigParser.ConfigParser()
+        file_handle = open(config_filename)
+        self.config.readfp(file_handle)
 
-		config_filename = 'main.conf'
-		self.config = ConfigParser.ConfigParser()
-		file_handle = open(config_filename)
-		self.config.readfp(file_handle)
+        self.opc_classname = self.config.get('opc', 'classname')
+        self.opc_usegateway = self.config.get('opc', 'use_gateway')
+        self.opc_gateway = self.config.get('opc', 'gateway')
+        self.opc_servers = self.config.get('opc', 'servers')
+        self.opc_host = self.config.get('opc', 'host')
 
-		self.opc_classname = self.config.get('opc', 'classname')
-		self.opc_gateway = self.config.get('opc', 'gateway')
-		self.opc_servers = self.config.get('opc', 'servers')
-		self.opc_host = self.config.get('opc', 'host')
+        self.logger.info('Opc Class: ' + self.opc_classname)
+        self.logger.info('Opc Use Gateway: ' + self.opc_usegateway)
+        self.logger.info('Opc Gateway: ' + self.opc_gateway)
+        self.logger.info('Opc Servers: ' + self.opc_servers)
+        self.logger.info('Opc Host: ' + self.opc_host)
 
-		self.logger.info('Opc Class: ' + self.opc_classname)
-		self.logger.info('Opc Gateway: ' + self.opc_gateway)
-		self.logger.info('Opc Servers: ' + self.opc_servers) 
-		self.logger.info('Opc Host: ' + self.opc_host)
+        self.preferences = {}
+        self.preferences['show_root'] = mTools.str_to_bool(
+            self.config.get('preferences', 'show_root'))
 
+        if self.opc_usegateway == 'True':
+            self.logger.info('Connecting through the gateway.')
+            self.opc = OpenOPC.open_client(self.opc_gateway)
+        else:
+            self.logger.info('Connecting directly.')
+            self.opc = OpenOPC.client()
 
-		self.preferences = {}
-		self.preferences['show_root'] = mTools.str_to_bool(self.config.get('preferences', 'show_root'))
+        result = self.opc.connect(self.opc_servers, self.opc_host)
+        result = True
+        if result:
+            self.logger.info('... Successfully connected to OPC server')
+            return True
 
-		self.opc = OpenOPC.open_client(self.opc_gateway)
-		result = self.opc.connect(self.opc_servers, self.opc_host)
-		result = True
-		if result:
-			self.logger.info('... Successfully connected to OPC server')
-			return True
+        else:
+            self.logger.error('... FAILED to connect to OPC Server')
+            time.sleep(5)
+            self.init()
 
-		else:
-			self.logger.error('... FAILED to connect to OPC Server' )
-			time.sleep(5)
-			self.init()
+    # -- Make sure Opc is running
+    def ping(self):
 
+        results = self.opc.info()
 
-	## -- Make sure Opc is running
-	def ping(self):
+        found = False
+        if results:
+            for result in results:
+                if result[0] == 'State':
+                    found = True
+                    if result[1] == 'Running':
+                        return True
+                    else:
+                        self.logger.error(
+                            'PING ERROR: State Found but not Recognised: ' + result[1])
+                        self.opc.close()
+                        self.init()
 
-		results = self.opc.info()
+        if not found:
+            self.logger.error(
+                'PING ERROR: Could not find State. Reconnecting...')
+            self.opc.close()
+            return False
 
-		found = False
-		if results:
-			for result in results:
-				if result[0] == 'State':
-					found = True
-					if result[1] == 'Running':
+    # -- Mirror to OpenOPC's list function with non-recursive options set. You can parse in either '*' or the branch that you would like to list.
+    def list(self, params):
+        if not self.preferences['show_root']:
+            params = 'Root.' + params
 
-						return True
+        lst = self.opc.list(params, False, False, True)
+        return lst
 
-					else:
-						self.logger.error('PING ERROR: State Found but not Recognised: ' + result[1] )
-						self.opc.close()
-						self.init()
+    # -- Mirror to the OpenOPC's list function with recursive options set. It returns a flat list of all leaves from the parameters set. You can parse in either '*' or the branch you would like to list.
+    def listRecursive(self, params):
+        lst = self.opc.list(params, True, False, True)
+        return lst
 
-		if not found:
+    # -- Returns the next level of "branch" based on the parameters set. You can parse in either '*' or the branch you would like the next level of.
+    def listTree(self, params):
+        if not self.preferences['show_root']:
+            params = 'Root.' + params
 
-			self.logger.error('PING ERROR: Could not find State. Reconnecting...')
-			self.opc.close()
-			return False
+        lst = self.opc.list(params, False, False, True)
+        parent = params[:-1]
+        tree = []
+        description = None
+        for leaf in lst:
 
-	## -- Mirror to OpenOPC's list function with non-recursive options set. You can parse in either '*' or the branch that you would like to list.
-	def list(self, params):
+            leaf_stripped = leaf[0].replace(parent, '')
 
-		if not self.preferences['show_root']:
-			params = 'Root.' + params
-		
-		lst = self.opc.list(params, False, False, True)
-		return lst
+            split = leaf_stripped.split('.')
 
-	## -- Mirror to the OpenOPC's list function with recursive options set. It returns a flat list of all leaves from the parameters set. You can parse in either '*' or the branch you would like to list.
-	def listRecursive(self, params):
-		
-		lst = self.opc.list(params, True, False, True)
-		return lst
+            if split[1] == 'Value':
+                final_leaf = [leaf[0], 'Leaf']
 
+            elif split[2] == 'Value':
 
-	## -- Returns the next level of "branch" based on the parameters set. You can parse in either '*' or the branch you would like the next level of.
-	def listTree(self, params):
+                values = self.properties(leaf[0])
+                for v in values:
+                    if v[2] == 'Item Description':
+                        description = v[3]
 
-		if not self.preferences['show_root']:
-			params = 'Root.' + params
+                final_leaf = [split[0], 'Branch', description]
 
-		lst = self.opc.list(params, False, False, True)
-		parent = params[:-1]
-		tree = []
-		description = None
-		for leaf in lst:
-			
-			leaf_stripped = leaf[0].replace(parent, '')
+            else:
+                final_leaf = [split[0], 'Branch', description]
 
-			split = leaf_stripped.split('.')
+            if final_leaf not in tree:
 
-			if split[1] == 'Value':
-				final_leaf = [leaf[0], 'Leaf']
+                tree.append(final_leaf)
 
-			elif split[2] == 'Value':
+        return tree
 
-				values = self.properties(leaf[0])
-				for v in values:
-					if v[2] == 'Item Description':
-						description = v[3]
+    def listOneDeep(self, params):
 
-				final_leaf = [split[0], 'Branch', description]
+        if not self.preferences['show_root']:
+            params = 'Root.' + params
 
-			else:
-				final_leaf = [split[0], 'Branch', description]
+        lst = self.opc.list(params, False, False, True)
+        parent = params[:-1]
 
-			if final_leaf not in tree:
+        new_params = []
+        for leaf in lst:
 
-				tree.append(final_leaf)
+            leaf_stripped = leaf[0].replace(parent, '')
 
+            split = leaf_stripped.split('.')
 
-		return tree
+            new_params.append(leaf[0])
 
+        new_lst = self.properties(new_params)
 
-	def listOneDeep(self, params):
+        branch = {}
+        count = 0
+        for tag_row in new_lst:
 
-		if not self.preferences['show_root']:
-			params = 'Root.' + params
+            if tag_row[0] not in branch:
+                branch[tag_row[0]] = []
 
-		lst = self.opc.list(params, False, False, True)
-		parent = params[:-1]
+            branch[tag_row[0]].append(tag_row)
 
-		new_params = []
-		for leaf in lst:
-			
-			leaf_stripped = leaf[0].replace(parent, '')
+        for leaf in branch:
+            branch[leaf].append('Leaf')
 
-			split = leaf_stripped.split('.')
+        return branch
 
-			new_params.append(leaf[0])
+    # -- Mimics OpenOPC's read function. Parsing in a branch or leaf and it will return a tuple of values.
+    def read(self, params):
 
-		new_lst = self.properties(new_params)
+        lst = self.opc.read(params)
 
-		branch = {}
-		count = 0
-		for tag_row in new_lst:
+        return lst
 
-			if tag_row[0] not in branch:
-				branch[tag_row[0]] = []
-
-			branch[tag_row[0]].append(tag_row)
-
-
-		for leaf in branch:
-			branch[leaf].append('Leaf')
-
-		return branch				
-
-	## -- Mimics OpenOPC's read function. Parsing in a branch or leaf and it will return a tuple of values.
-	def read(self, params):
-
-		lst = self.opc.read(params)
-
-		return lst
-
-    ## -- Mimics OpenOPC's write function.  Writes a list of (tag, value) pair(s), returns a list of booleans or a single boolean.
+    # -- Mimics OpenOPC's write function.  Writes a list of (tag, value) pair(s), returns a list of booleans or a single boolean.
         def write(self, params):
 
-                boollst = self.opc.write(params)
+            boollst = self.opc.write(params)
 
-                return boollst
+            return boollst
 
-	## -- Mimics the OpenOPC's properties function. Parsing in a leaf name or multiple leaves will return the result that you would expect when calling it via OpenOPC
-	def properties(self, params, json=False):
+    # -- Mimics the OpenOPC's properties function. Parsing in a leaf name or multiple leaves will return the result that you would expect when calling it via OpenOPC
+    def properties(self, params, json=False):
 
-		if type(params).__name__=='list':
-			split = params
-		else:
-			split = params.split(',')
+        if type(params).__name__ == 'list':
+            split = params
+        else:
+            split = params.split(',')
 
-		lst = self.opc.properties(split)
+        lst = self.opc.properties(split)
 
-		if json:
+        if json:
 
-			lst = self.buildJsonList(lst)
+            lst = self.buildJsonList(lst)
 
-		return lst
+        return lst
 
+    def buildJsonList(self, results):
 
-	def buildJsonList(self, results):
+        branch = []
+        leaf = {}
 
-		branch = []
-		leaf = {}
+        for result in results:
 
-		for result in results:
+            if 'Item ID (virtual property)' not in leaf:
 
-			if 'Item ID (virtual property)' not in leaf:
+                leaf = {}
 
-				leaf = {}
+            elif leaf['Item ID (virtual property)'] != result[0]:
 
-			elif leaf['Item ID (virtual property)'] != result[0]:
+                branch.append(leaf)
+                leaf = {}
 
-				branch.append(leaf)
-				leaf = {}
+            leaf[result[2]] = result[3]
 
-			leaf[result[2]] = result[3]
+        branch.append(leaf)
 
-		branch.append(leaf)
+        return branch
 
-		return branch
+    def search(self, params):
 
+        params = '*' + params + '*'
 
-	def search(self, params):
+        lst = self.opc.list(params, False, False, True)
+        return lst
 
-		params = '*' + params + '*'
+    def testing(self, params):
 
-		lst = self.opc.list(params, False, False, True)
-		return lst
+        params = '*' + params + '*'
 
-	def testing(self, params):
+        lst = self.opc.list(params, False, False, True)
 
-		params = '*' + params + '*'
+        return lst
 
-		lst = self.opc.list(params, False, False, True)
+    def test_call(self):
 
-		return lst
-
-	def test_call(self):
-
-		lst = self.opc.info()
-		return lst
-
+        lst = self.opc.info()
+        return lst
