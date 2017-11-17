@@ -15,7 +15,6 @@ funcs = None
 
 class RestApiServer(Thread):
     def __init__(self, console, server_ip = '', server_port = 8003):
-
         #self.logger = logger
         global logger
         logger = console
@@ -35,7 +34,6 @@ class RestApiServer(Thread):
 
 
 class RestRequestHandler (BaseHTTPRequestHandler):
-
     def do_GET(self):
         params = []
         values = []
@@ -44,9 +42,7 @@ class RestRequestHandler (BaseHTTPRequestHandler):
         #logger.info('Hit with: ' + self.path )
         qstring = self.path[2:].split('&')
         for s in qstring:
-
             if '=' in s:
-
                 k,v = s.split('=')
                 if k == 'method':
                     method = v
@@ -68,9 +64,8 @@ class RestRequestHandler (BaseHTTPRequestHandler):
         # send a blank line to end headers:
         self.wfile.write("\n")
 
-        ## -- Extract function parameters. 
+        ## -- Extract function parameters.
         if method:
-
             if params:
                 if method.lower() == 'list':
                     json.dump( funcs.list(params), self.wfile )
@@ -102,9 +97,7 @@ class RestRequestHandler (BaseHTTPRequestHandler):
         #logger.info('Hit with: ' + content )
         qstring = content.split('&')
         for s in qstring:
-
             if '=' in s:
-
                 k,v = s.split('=')
                 if k == 'method':
                     method = v
@@ -128,7 +121,6 @@ class RestRequestHandler (BaseHTTPRequestHandler):
 
         ## -- Extract function parameters.
         if method:
-
             if params:
                 if method.lower() == 'write':
                     try:
@@ -143,6 +135,9 @@ class RestRequestHandler (BaseHTTPRequestHandler):
                         print('There are more tags than values: ' + str(e))
                     except ValueError as e:
                         print('Value not a number:' + str(e))
+
+    def do_POST(self):
+        self.do_PUT()
 
     def log_message(self, format, *args):
         logger.info('Incoming: ' + self.client_address[0] )
